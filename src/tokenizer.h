@@ -14,13 +14,8 @@ typedef struct _TToken {
 	char* text;
 } TToken;
 
-TToken* t_token_alloc();
-
 GList* t_tokenize_str(char* str);
 GList* t_tokenize_file(FILE* f);
-
-GList* t_sort_alpha(GList* list);
-GList* t_sort_pos(GList* list);
 
 void t_free_list(GList* list);
 

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=IR System
+Icon=/home/gary/programming/ir_system/ir_system.png
+StartupNotify=true
+Exec=/home/gary/programming/ir_system/ir_system

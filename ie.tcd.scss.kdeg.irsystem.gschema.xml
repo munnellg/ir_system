@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<schemalist>
+	<schema path="/home/gary/programming/ir_system" id="ie.tcd.scss.kdeg.irsystem">
+		<key name="font" type="s">
+			<default>'Monospace 12'</default>
+			<summary>Font</summary>
+			<description>The font to be used for content.</description>
+		</key>
+		<key name="ranking" type="s">
+			<choices>
+				<choice value='boolean'/>
+				<choice value='TF-IDF' />
+				<choice value='BM25' />
+			</choices>
+			<default>'boolean AND'</default>
+			<summary>Ranking</summary>
+			<description>The type of ranking the application will use when returning documents</description>
+		</key>
+	</schema>
+</schemalist>

@@ -2,7 +2,7 @@
 
 /* Worker method that frees up memory that has been allocated to a
  * token. This is used for freeing data in a GList */
-static void t_free_token(TToken* token) {
+static void t_token_free(TToken* token) {
 	free(token->text);
 	free(token);
 }
@@ -11,12 +11,13 @@ static void t_free_token(TToken* token) {
  * object. By default, this new token will have a text buffer of size
  * DEFAULT_BUFFER_SIZE and a position of -1 */
 TToken* t_token_alloc() {
-	TToken* t = malloc(sizeof (TToken*));
+	TToken* t;
 
-	t->position = -1;
-	t->text = malloc(sizeof(char) * DEFAULT_BUFFER_SIZE);
-	t->text[0] = '\0';
-	
+	if( (t = malloc(sizeof (TToken))) != NULL) {
+		t->position = -1;
+		t->text = malloc(sizeof(char) * DEFAULT_BUFFER_SIZE);
+		t->text[0] = '\0';		
+	}	
 	return t;
 }
 
@@ -35,7 +36,7 @@ GList* t_tokenize_str(char* str) {
 	for( i=1, c=str[0]; c != '\0'; c=str[i++] ) {
 
 		if( nw && (mul * DEFAULT_BUFFER_SIZE) >= (pos-t->position)) {
-				t->text = (char* )realloc(t->text, sizeof(char*) * DEFAULT_BUFFER_SIZE * ++mul);
+				t->text = realloc(t->text, sizeof(char) * DEFAULT_BUFFER_SIZE * ++mul);
 		}
 
 		if( isalpha(c) ) {
@@ -54,6 +55,11 @@ GList* t_tokenize_str(char* str) {
 		pos++;
 	}
 
+	if(nw) {
+		t->text[pos - t->position] = '\0';
+		l = g_list_append(l, t);
+	}
+	
 	return l;
 }
 
@@ -64,6 +70,10 @@ GList* t_tokenize_file(FILE* f) {
 	TToken* t = NULL;
 	char c;
 	int nw, pos, mul;
+
+	if(!f) {
+		return NULL;
+	}
 	
 	nw = 0;
 	pos = 0;
@@ -94,14 +104,6 @@ GList* t_tokenize_file(FILE* f) {
 	return l;
 }
 
-GList* t_sort_alpha(GList* list) {
-	return NULL;
-}
-
-GList* t_sort_pos(GList* list) {
-	return NULL;
-}
-
 void t_free_list(GList* list) {
-	g_list_free_full(list, (GDestroyNotify) t_free_token);
+	g_list_free_full(list, (GDestroyNotify) t_token_free);
 }

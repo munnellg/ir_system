@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<interface>
+	<!-- interface requires gtk+ 3.8 -->
+	<template class="IrAppWindow" parent="GtkApplicationWindow">
+		<property name="title" translatable="yes">Information Retrieval System</property>
+		<property name="default-width">600</property>
+		<property name="default-height">400</property>
+		<child>
+			<object class="GtkBox" id="content_box">
+				<property name="visible">True</property>
+				<property name="orientation">vertical</property>
+
+				<child>
+					<object class="GtkBox" id="hbox">
+						<property name="visible">True</property>
+						<child>
+							<object class="GtkHPaned" id="paned">
+								<property name="visible">True</property>
+								<property name="position">100</property>
+								<child>
+									<object class="GtkScrolledWindow" id="sidebar-sw">
+										<property name="visible">True</property>
+										<property name="hscrollbar-policy">automatic</property>
+										<property name="vscrollbar-policy">automatic</property>
+										<child>
+											<object class="GtkListBox" id="list">
+												<signal name="row-activated" handler="open_selected_file"/>
+												<property name="visible">True</property>
+												<property name="activate-on-single-click">False</property>
+												<property name="selection-mode">single</property>
+											</object>
+										</child>
+									</object>
+								</child>
+								<child>
+									<object class="GtkScrolledWindow" id="content_scroll_win">
+										<property name="visible">True</property>
+										<property name="hexpand">True</property>
+										<property name="vexpand">True</property>
+										<child>
+											<object class="GtkTextView" id="view">
+												<property name="visible">True</property>
+												<property name="editable">False</property>
+												<property name="cursor-visible">False</property>
+											</object>
+										</child>
+									</object>
+								</child>
+							</object>
+						</child>
+					</object>
+				</child>
+			</object>
+		</child>
+	</template>
+</interface>
