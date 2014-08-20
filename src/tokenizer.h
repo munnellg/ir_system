@@ -6,15 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <wchar.h>
+#include <wctype.h>
 
 #define DEFAULT_BUFFER_SIZE 12
 
 typedef struct _TToken {
 	int position;
-	char* text;
+	wchar_t* text;
 } TToken;
 
-GList* t_tokenize_str(char* str);
+GList* t_tokenize_str(wchar_t* str);
 GList* t_tokenize_file(FILE* f);
 
 void t_free_list(GList* list);
