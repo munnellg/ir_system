@@ -90,19 +90,19 @@ int i_index_file(char* fname) {
 	IDocData *doc_data;
 	int quark;
 
-	f = fopen(fname, "r");
+	f = fopen(fname, "r ccs=UTF-8");
 	
 	if(!f) {
 		return -1;
 	}
+
+	printf("Processing %s\n", fname);
 	
 	quark = g_quark_from_string(fname);
 
 	tokens = t_tokenize_file(f);
 	p = tokens;
 
-	printf("Processing %s\n", fname);
-	
 	/* Store useful information about the file itself */
 	doc_data = i_doc_data_new();
 	doc_data->doc_id = quark;
@@ -151,9 +151,6 @@ static GList *i_index_retrieve_documents(char *query) {
 	
 	/* Tokenize the user's query */
 	tokens = t_tokenize_str(query);
-
-
-	printf("%d terms in query\n", g_list_length(tokens));
 	
 	for(p = tokens; p != NULL; p = p->next) {
 		t = (TToken*) p->data;
@@ -162,9 +159,7 @@ static GList *i_index_retrieve_documents(char *query) {
 
 		if(list) {
 			postings_list = g_list_append(postings_list, list);
-		} else {
-			printf("No key found for %s\n", t->text);
-		}
+		} 
 	}
 
 	postings_list = g_list_sort(postings_list, (GCompareFunc) i_posting_list_compare);
@@ -207,9 +202,11 @@ static GList *i_index_intersect_many(GList *postings_list) {
 
 	p = postings_list;	
 
-	l = (IPostingList *) p->data;
-	result = l->postings;
-	p = p->next;
+	if(p) {
+		l = (IPostingList *) p->data;
+		result = l->postings;
+		p = p->next;
+	}	
 
 	while(p != NULL && result != NULL) {
 		l = (IPostingList *) p->data;
@@ -220,24 +217,25 @@ static GList *i_index_intersect_many(GList *postings_list) {
 	return result;
 }
 
-GList *i_index_query_boolean_and(char *query) {
-	GList *postings_list, *intersected, *result, *p;
+GSList *i_index_query_boolean_and(char *query) {
+	GList *postings_list, *intersected, *p;
+	GSList *result;
 	char *doc_id;
 	IPosting * posting;
+
 	result = NULL;
-	
 	postings_list = i_index_retrieve_documents(query);
 	intersected = i_index_intersect_many(postings_list);	
 	
 	for(p = intersected; p != NULL; p=p->next) {
 		posting = (IPosting*) p->data;
 		doc_id = (char *)g_quark_to_string(posting->doc_data->doc_id);
-		result = g_list_append(result, doc_id);
+		result = g_slist_append(result, doc_id);
 	}
 
 	g_list_free(postings_list);
 	g_list_free(intersected);
-	
+
 	return result;
 }
 
@@ -256,4 +254,20 @@ void i_index_destroy() {
 	g_hash_table_destroy(idx);
 	idx = NULL;
 	g_list_free_full(docs, (GDestroyNotify)i_doc_data_free);
+}
+
+GSList *i_docs_get_list() {
+	GSList *fnames;
+	GList *p;
+	IDocData *d;
+	char* doc_id;
+
+	fnames = NULL;
+	
+	for(p = docs; p != NULL; p=p->next) {
+		d = (IDocData*) p->data;
+		doc_id = (char *)g_quark_to_string(d->doc_id);
+		fnames = g_slist_append(fnames, doc_id);
+	}
+	return fnames;
 }

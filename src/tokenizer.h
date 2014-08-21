@@ -13,10 +13,11 @@
 
 typedef struct _TToken {
 	int position;
-	wchar_t* text;
+	char* text;
 } TToken;
 
-GList* t_tokenize_str(wchar_t* str);
+GList* t_tokenize_str(char* str);
+GList* t_tokenize_wstr(wchar_t* str);
 GList* t_tokenize_file(FILE* f);
 
 void t_free_list(GList* list);

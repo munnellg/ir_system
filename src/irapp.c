@@ -8,7 +8,7 @@ static void preferences_activated(GSimpleAction *action, GVariant *parameter, gp
 }
 
 static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
-	GtkWidget *win;
+	GtkWindow *win;
 	GtkWidget *dialog;
 	GSList *list, *p;	
 
@@ -17,7 +17,7 @@ static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, g
 	win = gtk_application_get_active_window (GTK_APPLICATION (app));
 	
 	dialog = gtk_file_chooser_dialog_new ((const gchar*)"Open File",
-																				GTK_WINDOW(win),
+																				win,
 																				GTK_FILE_CHOOSER_ACTION_OPEN,
 																				"Cancel",
 																				GTK_RESPONSE_CANCEL,
@@ -38,7 +38,7 @@ static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, g
 		}
 	}
 
-	ir_app_window_list_files(IR_APP_WINDOW(win), list);
+	ir_app_window_list_files_append(IR_APP_WINDOW(win), list);
 	
 	gtk_widget_destroy (dialog);
 	g_slist_free (list);
@@ -51,7 +51,7 @@ static void quit_activated(GSimpleAction *action, GVariant *parameter, gpointer 
 static GActionEntry app_entries[] = {
 	{"preferences", preferences_activated, NULL, NULL, NULL},
 	{"quit", quit_activated, NULL, NULL, NULL},
-	{"add_to_index", add_to_index_activated, NULL, NULL, NULL}
+	{"add_to_index", add_to_index_activated, NULL, NULL, NULL},
 };
 
 static void ir_app_startup(GApplication *app) {

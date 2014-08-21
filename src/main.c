@@ -1,38 +1,40 @@
 #include "irapp.h"
 #include <locale.h>
 
-int main(int argc, char* argv[]) {
-	FILE *f;
-	GList *l, *p;
-	TToken *t;
-	int i;
-	
-	setlocale(LC_ALL, "");
+void run_query(char *query) {
+	GSList *docs, *p;
 
+	printf("Running query %s\n", query);
+	docs = i_index_query_boolean_and(query);
+	p = docs;
+	while (p) {
+		printf("%s\n", (char*)p->data);
+		p = p->next;
+	}
+	printf("\n");
+	g_slist_free(docs);
+}
+
+int main(int argc, char* argv[]) {
+/*	int i;
+	i_index_initialize();
+	
 	if(argc < 2) {
+		printf("No files passed as argument\n");
 		return -1;
 	}
-	
-	for( i = 1; i < argc; i++ ) {
-		f = fopen(argv[i], "r ccs=UTF-8");
 
-		if(!f) {
-			printf("Unable to open file %s", argv[i]);
-			continue;
-		}
-	
-		l = t_tokenize_file(f);
-
-		for(p = l; p!=NULL; p=p->next) {
-			t = (TToken *)p->data;
-			wprintf(L"%d: %ls\n", t->position, t->text);
-		}
-
-		t_free_list(l);		
-		fclose(f);
+	for(i=1; i<argc; i++) {
+		i_index_file(argv[i]);
 	}
 
-	return 0;
+	run_query("Test query 1");
+	run_query("Test query 1");
+	run_query("Cthulhu");
+	run_query("Yig");
 	
-/*	return g_application_run(G_APPLICATION(ir_app_new()), argc, argv); */
+	i_index_destroy();	
+
+	return 0;*/
+	return g_application_run(G_APPLICATION(ir_app_new()), argc, argv);
 }
