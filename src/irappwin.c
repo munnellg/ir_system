@@ -4,6 +4,7 @@ typedef struct _IrAppWindowPrivate {
 	GtkWidget *view;
 	GtkWidget *list;
 	GtkWidget *searchtext;
+	GtkWidget *lbar;
 } IrAppWindowPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE(IrAppWindow, ir_app_window, GTK_TYPE_APPLICATION_WINDOW)
@@ -16,6 +17,7 @@ static void clear_search(GtkEntry *entry, gpointer user_data) {
 	win = IR_APP_WINDOW (gtk_widget_get_toplevel (GTK_WIDGET (entry)));
 	fnames = i_docs_get_list();	
 	ir_app_window_list_files_replace(win, fnames);
+	gtk_entry_set_text(entry, "");
 }
 
 static void execute_search(GtkEntry *entry, gpointer user_data) {
@@ -25,12 +27,11 @@ static void execute_search(GtkEntry *entry, gpointer user_data) {
 	char *data;
 	
 	win = IR_APP_WINDOW (gtk_widget_get_toplevel (GTK_WIDGET (entry)));
-	query = gtk_entry_get_text(entry);
+	query = (char*)gtk_entry_get_text(entry);
 	docs = i_index_query_boolean_and(query);
 	
 	for(p = docs; p!=NULL; p=p->next) {
 		data = (char *) p->data;
-		printf("%s\n", data);
 	}
 	ir_app_window_list_files_replace(win, docs);
 }
@@ -72,13 +73,59 @@ static void ir_app_window_class_init(IrAppWindowClass *class) {
 	gtk_widget_class_bind_template_child_private(GTK_WIDGET_CLASS(class), IrAppWindow, view);
 	gtk_widget_class_bind_template_child_private(GTK_WIDGET_CLASS(class), IrAppWindow, list);
 	gtk_widget_class_bind_template_child_private(GTK_WIDGET_CLASS(class), IrAppWindow, searchtext);
+	gtk_widget_class_bind_template_child_private(GTK_WIDGET_CLASS(class), IrAppWindow, lbar);
 	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), open_selected_file);
 	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), search_icon_release_activated);
-		gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), search_keypress_activated);
+	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), search_keypress_activated);
 }
 
 IrAppWindow *ir_app_window_new(IrApp *app) {
 	return g_object_new(IR_APP_WINDOW_TYPE, "application", app, NULL);
+}
+
+GSList* ir_app_window_get_files(IrAppWindow *win) {
+	GtkWidget *dialog;
+	GSList *l;
+	
+	l = NULL;	
+	
+	dialog = gtk_file_chooser_dialog_new ((const gchar*)"Open File",
+																				GTK_WINDOW(win),
+																				GTK_FILE_CHOOSER_ACTION_OPEN,
+																				"Cancel",
+																				GTK_RESPONSE_CANCEL,
+																				"Open",
+																				GTK_RESPONSE_ACCEPT,
+																				NULL);
+
+	gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
+
+	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
+	{
+		l = gtk_file_chooser_get_filenames (GTK_FILE_CHOOSER (dialog));
+	}
+	
+	gtk_widget_hide(dialog);
+	gtk_widget_destroy (dialog);
+
+	return l;
+}
+
+void ir_app_window_load_files_into_index(IrAppWindow *win, GSList *list) {
+	IrAppWindowPrivate *priv;
+	GSList *p;
+	int len;
+	int i;
+	
+	len= g_slist_length(list);
+	p = list;
+	priv = ir_app_window_get_instance_private(win);
+	gtk_widget_set_visible(GTK_WIDGET(priv->lbar), TRUE);
+	for(p=list; p!=NULL; p=p->next) {
+		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(priv->lbar), (float)++i/(float)len);
+		i_index_file(p->data);
+	}
+	gtk_widget_set_visible(GTK_WIDGET(priv->lbar), FALSE);
 }
 
 void ir_app_window_list_files_append(IrAppWindow *win, GSList *files) {
