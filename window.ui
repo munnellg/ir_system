@@ -4,20 +4,41 @@
 	<!-- interface requires gtk+ 3.8 -->
 	<template class="IrAppWindow" parent="GtkApplicationWindow">
 		<property name="title" translatable="yes">Information Retrieval System</property>
-		<property name="default-width">600</property>
-		<property name="default-height">400</property>
+		<property name="default-width">1024</property>
+		<property name="default-height">720</property>
 		<child>
 			<object class="GtkBox" id="content_box">
 				<property name="visible">True</property>
-				<property name="orientation">vertical</property>
-
+				<property name="orientation">vertical</property>				
+				<child>
+					<object class="GtkBox" id="header">
+						<property name="visible">True</property>
+						<property name="border-width">5</property>
+						<child>
+							<object class="GtkEntry" id="searchtext">
+								<property name="visible">True</property>
+								<property name="hexpand">True</property>
+								<property name="primary-icon-name">edit-delete-symbolic</property>
+								<property name="secondary-icon-name">edit-find-symbolic</property>
+								<property name="primary-icon-sensitive">True</property>
+								<property name="secondary-icon-sensitive">True</property>
+								<property name="primary-icon-activatable">True</property>
+								<property name="secondary-icon-activatable">True</property>
+								<signal name="icon-release" handler="search_icon_release_activated"/>
+								<signal name="key-press-event" handler="search_keypress_activated" />
+							</object>
+						</child>
+					</object>
+				</child>
 				<child>
 					<object class="GtkBox" id="hbox">
 						<property name="visible">True</property>
+
 						<child>
 							<object class="GtkHPaned" id="paned">
 								<property name="visible">True</property>
-								<property name="position">100</property>
+								<property name="position">250</property>
+
 								<child>
 									<object class="GtkScrolledWindow" id="sidebar-sw">
 										<property name="visible">True</property>
@@ -33,6 +54,7 @@
 										</child>
 									</object>
 								</child>
+
 								<child>
 									<object class="GtkScrolledWindow" id="content_scroll_win">
 										<property name="visible">True</property>
@@ -40,6 +62,7 @@
 										<property name="vexpand">True</property>
 										<child>
 											<object class="GtkTextView" id="view">
+												<property name="wrap-mode">GTK_WRAP_WORD</property>
 												<property name="visible">True</property>
 												<property name="editable">False</property>
 												<property name="cursor-visible">False</property>
@@ -47,8 +70,14 @@
 										</child>
 									</object>
 								</child>
+
 							</object>
 						</child>
+					</object>
+				</child>
+				<child>
+					<object class="GtkProgressBar" id="lbar">
+						<property name="visible">False</property>
 					</object>
 				</child>
 			</object>

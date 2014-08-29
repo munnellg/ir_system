@@ -7,7 +7,6 @@
 #include <stdlib.h>
 
 typedef struct _docdata {
-	char *title;
 	int doc_id;
 	int doc_length;
 } IDocData;
@@ -25,7 +24,7 @@ typedef struct _postinglist {
 } IPostingList;
 
 int i_index_file(char *fname);
-GList *i_index_query_boolean_and(char *query);
+GSList *i_index_query_boolean_and(char *query);
 void i_index_initialize();
 void i_index_destroy();
 
@@ -40,6 +39,8 @@ void i_posting_list_free(IPostingList *list);
 IDocData *i_doc_data_new();
 int i_doc_data_compare(IDocData *d1, IDocData *d2);
 void i_doc_data_free(IDocData *data);
+
+GSList *i_docs_get_list();
 
 #endif /* _INDEX_H
 _ */

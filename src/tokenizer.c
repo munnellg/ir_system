@@ -14,50 +14,71 @@ TToken* t_token_alloc() {
 	TToken* t;
 
 	if( (t = malloc(sizeof (TToken))) != NULL) {
-		t->position = -1;
-		t->text = malloc(sizeof(wchar_t) * DEFAULT_BUFFER_SIZE);
-		t->text[0] = '\0';		
+		t->position = 0;
+		t->text = NULL;
 	}	
 	return t;
 }
 
+GList *t_tokenize_str(char *str) {
+	wchar_t *buffer = NULL;
+	int len;
+
+	len = strlen(str)+1;	
+	buffer = (wchar_t *)malloc(sizeof(wchar_t) * len);
+	mbstowcs(buffer, str, len);
+	return t_tokenize_wstr(buffer);
+}
+
 /* Tokenizes a string. Need to find some way to unify this with
  * t_tokenize_file. There's too much repeat code */
-GList* t_tokenize_str(wchar_t* str) {
+GList* t_tokenize_wstr(wchar_t* str) {
 	GList* l = NULL;
 	TToken* t = NULL;
-	char c;
-	int i, nw, pos, mul;
+	wchar_t *text, c;
+	int i, pos, mul, len;
 	
-	nw = 0;
 	pos = 0;
 	mul = 1;
 	
-	for( i=1, c=str[0]; c != '\0'; c=str[i++] ) {
+	for( i=0; i<wcslen(str); i++ ) {
+		c = str[i];
 
-		if( nw && (mul * DEFAULT_BUFFER_SIZE) >= (pos-t->position)) {
-				t->text = realloc(t->text, sizeof(wchar_t) * DEFAULT_BUFFER_SIZE * ++mul);
+		if( text && (mul * DEFAULT_BUFFER_SIZE) <= (pos-t->position)) {
+				text = (wchar_t* )realloc(text, sizeof(wchar_t*) * DEFAULT_BUFFER_SIZE * mul++);
 		}
 
 		if( iswalpha(c) ) {
-			if(!nw) {
+			if(!text) {
 				t = t_token_alloc();
+				text = malloc(sizeof(wchar_t) * DEFAULT_BUFFER_SIZE);
 				t->position = pos;
 			}
 			
-			t->text[pos - t->position] = tolower(c);
-			nw = 1;
-		} else if(nw) {
-			t->text[pos - t->position] = '\0';
+			text[pos - t->position] = towlower(c);			
+		} else if(text) {
+			text[pos - t->position] = '\0';
+			len = wcslen(text) * sizeof(text[0]);
+			
+			t->text = malloc(sizeof(char) * len);
+			wcstombs(t->text, text, len);
 			l = g_list_append(l, t);
-			nw = 0;
+			
+			free(text);
+			text = NULL;
+			mul = 1;
 		}
 		pos++;
 	}
 
-	if(nw) {
-		t->text[pos - t->position] = '\0';
+	if(text) {
+		text[pos - t->position] = '\0';
+		len = wcslen(text) * sizeof(text[0]);
+		t->text = malloc(sizeof(char) * len);
+		wcstombs(t->text, text, len);
 		l = g_list_append(l, t);
+			
+		free(text);
 	}
 	
 	return l;
@@ -68,35 +89,39 @@ GList* t_tokenize_str(wchar_t* str) {
 GList* t_tokenize_file(FILE* f) {
 	GList* l = NULL;
 	TToken* t = NULL;
-	wchar_t c;
-	int nw, pos, mul;
+	wchar_t *text, c;
+	int pos, mul, len;
 
 	if(!f) {
 		return NULL;
 	}
-	
-	nw = 0;
+
+	text = NULL;
 	pos = 0;
 	mul = 1;
 	
 	while( ( c = fgetwc(f) ) != WEOF ) {
 		
-		if( nw && (mul * DEFAULT_BUFFER_SIZE) <= (pos-t->position)) {
-				t->text = (wchar_t* )realloc(t->text, sizeof(wchar_t*) * DEFAULT_BUFFER_SIZE * ++mul);
+		if( text && (mul * DEFAULT_BUFFER_SIZE) <= (pos-t->position)) {
+				text = (wchar_t* )realloc(text, sizeof(wchar_t*) * DEFAULT_BUFFER_SIZE * mul++);
 		}
 
 		if( iswalpha(c) ) {
-			if(!nw) {
+			if(!text) {
 				t = t_token_alloc();
+				text = malloc(sizeof(wchar_t) * DEFAULT_BUFFER_SIZE);
 				t->position = pos;
 			}
 			
-			t->text[pos - t->position] = towlower(c);
-			nw = 1;
-		} else if(nw) {
-			t->text[pos - t->position] = '\0';
+			text[pos - t->position] = towlower(c);			
+		} else if(text) {
+			text[pos - t->position] = '\0';
+			len = wcslen(text) * sizeof(text[0]);
+			t->text = malloc(sizeof(char) * len);
+			wcstombs(t->text, text, len);
 			l = g_list_append(l, t);
-			nw = 0;
+			free(text);
+			text = NULL;
 			mul = 1;
 		}
 		pos++;
