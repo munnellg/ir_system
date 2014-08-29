@@ -33,10 +33,12 @@
 				<child>
 					<object class="GtkBox" id="hbox">
 						<property name="visible">True</property>
+
 						<child>
 							<object class="GtkHPaned" id="paned">
 								<property name="visible">True</property>
 								<property name="position">250</property>
+
 								<child>
 									<object class="GtkScrolledWindow" id="sidebar-sw">
 										<property name="visible">True</property>
@@ -52,6 +54,7 @@
 										</child>
 									</object>
 								</child>
+
 								<child>
 									<object class="GtkScrolledWindow" id="content_scroll_win">
 										<property name="visible">True</property>
@@ -67,8 +70,14 @@
 										</child>
 									</object>
 								</child>
+
 							</object>
 						</child>
+					</object>
+				</child>
+				<child>
+					<object class="GtkProgressBar" id="lbar">
+						<property name="visible">False</property>
 					</object>
 				</child>
 			</object>

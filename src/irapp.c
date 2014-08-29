@@ -1,5 +1,6 @@
 #include "irapp.h"
 #include "irappwin.h"
+#include "irapploading.h"
 
 G_DEFINE_TYPE(IrApp, ir_app, GTK_TYPE_APPLICATION)
 
@@ -7,14 +8,21 @@ static void preferences_activated(GSimpleAction *action, GVariant *parameter, gp
 	
 }
 
-static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
+static void new_index_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
 	GtkWindow *win;
-	GtkWidget *dialog;
-	GSList *list, *p;	
-
-	list = NULL;
-	
+		
 	win = gtk_application_get_active_window (GTK_APPLICATION (app));
+		
+	i_index_destroy();
+	i_index_initialize();
+	ir_app_window_list_files_replace(IR_APP_WINDOW(win), NULL);
+}
+/*
+static GSList* get_files(GtkWindow *win) {
+	GtkWidget *dialog;
+	GSList *l;
+	
+	l = NULL;	
 	
 	dialog = gtk_file_chooser_dialog_new ((const gchar*)"Open File",
 																				win,
@@ -29,19 +37,41 @@ static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, g
 		
 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
 	{
-		gtk_widget_hide(dialog);
-		list = gtk_file_chooser_get_filenames (GTK_FILE_CHOOSER (dialog));
-		p = list;
-		while(p) {
-			i_index_file(p->data);
-			p = p->next;
-		}
+		l = gtk_file_chooser_get_filenames (GTK_FILE_CHOOSER (dialog));
 	}
 
-	ir_app_window_list_files_append(IR_APP_WINDOW(win), list);
-	
 	gtk_widget_destroy (dialog);
-	g_slist_free (list);
+	return l;
+}
+
+static void load_files_into_index(GtkWindow *win, GSList *list) {
+	GSList *p;
+	IrAppLoading *loading;
+	
+	p = list;
+	loading = ir_app_loading_new (IR_APP_WINDOW(win));
+	
+	gtk_dialog_run(GTK_DIALOG(loading));
+
+	while(p) {
+		i_index_file(p->data);
+		p = p->next;
+	}
+
+	ir_app_window_list_files_append(IR_APP_WINDOW(win), p);
+	}*/
+
+static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
+	IrAppWindow *win;
+	GSList *files;
+	
+	win = gtk_application_get_active_window(GTK_APPLICATION(app));
+
+	files = ir_app_window_get_files(win);
+	ir_app_window_load_files_into_index(win, files);
+	ir_app_window_list_files_append(IR_APP_WINDOW(win), files);
+
+	g_slist_free (files);
 }
 
 static void quit_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
@@ -52,6 +82,7 @@ static GActionEntry app_entries[] = {
 	{"preferences", preferences_activated, NULL, NULL, NULL},
 	{"quit", quit_activated, NULL, NULL, NULL},
 	{"add_to_index", add_to_index_activated, NULL, NULL, NULL},
+	{"new_index", new_index_activated, NULL, NULL, NULL},
 };
 
 static void ir_app_startup(GApplication *app) {
