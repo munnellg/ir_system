@@ -1,6 +1,5 @@
 #include "irapp.h"
 #include "irappwin.h"
-#include "irapploading.h"
 
 G_DEFINE_TYPE(IrApp, ir_app, GTK_TYPE_APPLICATION)
 
@@ -13,62 +12,19 @@ static void new_index_activated(GSimpleAction *action, GVariant *parameter, gpoi
 		
 	win = gtk_application_get_active_window (GTK_APPLICATION (app));
 		
-	i_index_destroy();
+  i_index_destroy();
 	i_index_initialize();
 	ir_app_window_list_files_replace(IR_APP_WINDOW(win), NULL);
 }
-/*
-static GSList* get_files(GtkWindow *win) {
-	GtkWidget *dialog;
-	GSList *l;
-	
-	l = NULL;	
-	
-	dialog = gtk_file_chooser_dialog_new ((const gchar*)"Open File",
-																				win,
-																				GTK_FILE_CHOOSER_ACTION_OPEN,
-																				"Cancel",
-																				GTK_RESPONSE_CANCEL,
-																				"Open",
-																				GTK_RESPONSE_ACCEPT,
-																				NULL);
-
-	gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
-		
-	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
-	{
-		l = gtk_file_chooser_get_filenames (GTK_FILE_CHOOSER (dialog));
-	}
-
-	gtk_widget_destroy (dialog);
-	return l;
-}
-
-static void load_files_into_index(GtkWindow *win, GSList *list) {
-	GSList *p;
-	IrAppLoading *loading;
-	
-	p = list;
-	loading = ir_app_loading_new (IR_APP_WINDOW(win));
-	
-	gtk_dialog_run(GTK_DIALOG(loading));
-
-	while(p) {
-		i_index_file(p->data);
-		p = p->next;
-	}
-
-	ir_app_window_list_files_append(IR_APP_WINDOW(win), p);
-	}*/
 
 static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
-	IrAppWindow *win;
+	GtkWindow *win;
 	GSList *files;
 	
 	win = gtk_application_get_active_window(GTK_APPLICATION(app));
 
-	files = ir_app_window_get_files(win);
-	ir_app_window_load_files_into_index(win, files);
+	files = ir_app_window_get_files(IR_APP_WINDOW(win));
+	ir_app_window_load_files_into_index(IR_APP_WINDOW(win), files);
 	ir_app_window_list_files_append(IR_APP_WINDOW(win), files);
 
 	g_slist_free (files);
@@ -86,22 +42,36 @@ static GActionEntry app_entries[] = {
 };
 
 static void ir_app_startup(GApplication *app) {
-	GtkBuilder *builder;
-	GMenuModel *app_menu;
-	const gchar *quit_accels[2] = {"<Ctrl>Q", NULL};
-
+	GMenu *menu, *submenu, *section;
+	
 	G_APPLICATION_CLASS(ir_app_parent_class)->startup(app);
 
 	g_action_map_add_action_entries(G_ACTION_MAP(app),
 																	app_entries, G_N_ELEMENTS(app_entries),
 																	app);
-	gtk_application_set_accels_for_action(GTK_APPLICATION(app),
-																				"app.quit",
-																				quit_accels);
-	builder = gtk_builder_new_from_resource("/home/gary/programming/ir_system/menu.ui");
-	app_menu = G_MENU_MODEL(gtk_builder_get_object(builder, "appmenu"));
-	gtk_application_set_menubar(GTK_APPLICATION(app), app_menu);
-	g_object_unref(builder);
+
+	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>N", "app.new_index", NULL);
+	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>O", "app.add_to_index", NULL);
+	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>Q", "app.quit", NULL);
+
+	menu = g_menu_new();
+
+	submenu = g_menu_new();
+	section = g_menu_new();
+	g_menu_append(section, "_New Index", "app.new_index");
+	g_menu_append(section, "_Add To Index", "app.add_to_index");
+	g_menu_append(section, "Preferences", "app.preferences");
+	g_menu_append_section(submenu, NULL, G_MENU_MODEL(section));
+	section = g_menu_new();
+	g_menu_append(section, "_Quit", "app.quit");
+	g_menu_append_section(submenu, NULL, G_MENU_MODEL(section));	
+	g_menu_append_submenu(menu, "File", G_MENU_MODEL(submenu));
+
+	submenu = g_menu_new();
+	g_menu_append(submenu, "About", "app.about");
+	g_menu_append_submenu(menu, "Help", G_MENU_MODEL(submenu));
+
+	gtk_application_set_menubar(GTK_APPLICATION(app), G_MENU_MODEL(menu));
 }
 
 static void ir_app_init(IrApp *app) {

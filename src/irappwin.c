@@ -1,5 +1,9 @@
 #include "irappwin.h"
 
+#define DEFAULT_WIDTH 1024
+#define DEFAULT_HEIGHT 720
+#define PANED_POSITION 250
+
 typedef struct _IrAppWindowPrivate {
 	GtkWidget *view;
 	GtkWidget *list;
@@ -22,21 +26,19 @@ static void clear_search(GtkEntry *entry, gpointer user_data) {
 
 static void execute_search(GtkEntry *entry, gpointer user_data) {
 	char *query;
-	GSList *docs, *p;
+	GSList *docs;
 	IrAppWindow *win;
-	char *data;
-	
+
+
 	win = IR_APP_WINDOW (gtk_widget_get_toplevel (GTK_WIDGET (entry)));
 	query = (char*)gtk_entry_get_text(entry);
 	docs = i_index_query_boolean_and(query);
 	
-	for(p = docs; p!=NULL; p=p->next) {
-		data = (char *) p->data;
-	}
 	ir_app_window_list_files_replace(win, docs);
 }
 
 static void search_icon_release_activated(GtkEntry *entry, GtkEntryIconPosition pos, GdkEvent *event, gpointer user_data) {
+
 	if (pos == GTK_ENTRY_ICON_PRIMARY) {
 		clear_search(entry, user_data);
 	} else {
@@ -64,19 +66,88 @@ static void open_selected_file(GtkListBox *list_box, GtkListBoxRow *row, gpointe
 }
 
 static void ir_app_window_init(IrAppWindow *win) {
-	gtk_widget_init_template(GTK_WIDGET(win));
+	GtkWidget *root, *container, *child, *object;
+	IrAppWindowPrivate *priv;
+	
+	priv = ir_app_window_get_instance_private(win);
+	
+	/* The root container for the window. Holds all other widgets */
+	root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+
+	/* Build the search bar */
+	child = gtk_entry_new();
+	gtk_widget_set_hexpand(child, TRUE);
+	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(child), GTK_ENTRY_ICON_PRIMARY, "edit-delete-symbolic");
+	gtk_entry_set_icon_from_icon_name(GTK_ENTRY(child), GTK_ENTRY_ICON_SECONDARY, "edit-find-symbolic");
+	gtk_entry_set_icon_sensitive(GTK_ENTRY(child), GTK_ENTRY_ICON_PRIMARY, TRUE);
+	gtk_entry_set_icon_sensitive(GTK_ENTRY(child), GTK_ENTRY_ICON_SECONDARY, TRUE);
+	gtk_entry_set_icon_activatable(GTK_ENTRY(child), GTK_ENTRY_ICON_PRIMARY, TRUE);
+	gtk_entry_set_icon_activatable(GTK_ENTRY(child), GTK_ENTRY_ICON_SECONDARY, TRUE);
+	gtk_widget_set_visible(child, TRUE);
+	priv->searchtext = child;
+	g_signal_connect(G_OBJECT(child), "icon-release", G_CALLBACK(search_icon_release_activated), G_OBJECT(child));		
+	g_signal_connect(G_OBJECT(child), "key-press-event", G_CALLBACK(search_keypress_activated), G_OBJECT(child));
+	
+	container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_container_set_border_width(GTK_CONTAINER(container), 5);
+	gtk_container_add(GTK_CONTAINER(container), child);
+	gtk_widget_set_visible(container, TRUE);
+	
+	gtk_container_add(GTK_CONTAINER(root), container);
+
+	/* Create the display area for the document text */
+	object = gtk_text_view_new();
+	gtk_text_view_set_editable(GTK_TEXT_VIEW(object), FALSE);
+	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(object), GTK_WRAP_WORD);
+	gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(object), FALSE);
+	gtk_widget_set_visible(object, TRUE);
+	priv->view = object;
+	
+	child = gtk_scrolled_window_new(NULL, NULL);
+	gtk_widget_set_hexpand(child, TRUE);
+	gtk_widget_set_vexpand(child, TRUE);
+	gtk_container_add(GTK_CONTAINER(child), object);
+	gtk_widget_set_visible(child, TRUE);
+	
+	container = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);	
+	gtk_paned_add2(GTK_PANED(container), child);
+	gtk_widget_set_visible(container, TRUE);
+	
+	/* Create the area for listing files that have been curated */
+	object = gtk_list_box_new();
+	gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX(object), FALSE);
+	gtk_list_box_set_selection_mode(GTK_LIST_BOX(object), GTK_SELECTION_SINGLE);
+	gtk_widget_set_visible(object, TRUE);
+	priv->list = object;	
+	g_signal_connect(G_OBJECT(object), "row-activated", G_CALLBACK(open_selected_file), G_OBJECT(object));
+	
+	child = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(child), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_container_add(GTK_CONTAINER(child), object);
+	gtk_widget_set_visible(child, TRUE);
+	
+	gtk_paned_add1(GTK_PANED(container), child);
+	gtk_paned_set_position(GTK_PANED(container), PANED_POSITION);
+	
+	gtk_container_add(GTK_CONTAINER(root), container);
+
+	child = gtk_progress_bar_new();
+	gtk_widget_set_visible(child, FALSE);
+	priv->lbar = child;
+	
+	gtk_container_add(GTK_CONTAINER(root), child);
+	
+	/* Set up the window */
+	gtk_container_add(GTK_CONTAINER(win), root);	
+	gtk_window_set_title(GTK_WINDOW(win), "Information Retrieval System");
+	gtk_window_set_default_size(GTK_WINDOW(win), DEFAULT_WIDTH, DEFAULT_HEIGHT);
+
+	/* Make everything visible */
+	gtk_widget_set_visible(root, TRUE);
 }
 
 static void ir_app_window_class_init(IrAppWindowClass *class) {
-	gtk_widget_class_set_template_from_resource(GTK_WIDGET_CLASS(class), "/home/gary/programming/ir_system/window.ui");
 
-	gtk_widget_class_bind_template_child_private(GTK_WIDGET_CLASS(class), IrAppWindow, view);
-	gtk_widget_class_bind_template_child_private(GTK_WIDGET_CLASS(class), IrAppWindow, list);
-	gtk_widget_class_bind_template_child_private(GTK_WIDGET_CLASS(class), IrAppWindow, searchtext);
-	gtk_widget_class_bind_template_child_private(GTK_WIDGET_CLASS(class), IrAppWindow, lbar);
-	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), open_selected_file);
-	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), search_icon_release_activated);
-	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), search_keypress_activated);
 }
 
 IrAppWindow *ir_app_window_new(IrApp *app) {
