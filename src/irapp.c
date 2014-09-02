@@ -1,10 +1,18 @@
+#include <gtk/gtk.h>
+
 #include "irapp.h"
 #include "irappwin.h"
+#include "irappprefs.h"
 
 G_DEFINE_TYPE(IrApp, ir_app, GTK_TYPE_APPLICATION)
 
 static void preferences_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
-	
+	IrAppPrefs *prefs;
+	GtkWindow *win;
+
+	win = gtk_application_get_active_window(GTK_APPLICATION(app));
+	prefs = ir_app_prefs_new(IR_APP_WINDOW(win));
+	gtk_window_present(GTK_WINDOW(prefs));
 }
 
 static void new_index_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
@@ -52,6 +60,7 @@ static void ir_app_startup(GApplication *app) {
 
 	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>N", "app.new_index", NULL);
 	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>O", "app.add_to_index", NULL);
+	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>P", "app.preferences", NULL);
 	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>Q", "app.quit", NULL);
 
 	menu = g_menu_new();
