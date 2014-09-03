@@ -211,7 +211,8 @@ void ir_app_window_list_files_append(IrAppWindow *win, GSList *files) {
 	while(p) {
 		fname = basename((char*)p->data);
 		list_item = gtk_label_new(fname);
-		
+
+		gtk_misc_set_alignment(GTK_MISC(list_item), 0, 0.5);
 		gtk_widget_set_tooltip_text(list_item, (gchar*)p->data);
 		gtk_label_set_justify(GTK_LABEL(list_item), GTK_JUSTIFY_LEFT);
 		gtk_widget_set_hexpand(list_item, TRUE);

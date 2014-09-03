@@ -6,6 +6,22 @@
 
 G_DEFINE_TYPE(IrApp, ir_app, GTK_TYPE_APPLICATION)
 
+static void about_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
+	GtkWindow *win;
+
+	win=gtk_application_get_active_window(GTK_APPLICATION(app));
+	gtk_show_about_dialog(win,
+												"program-name", "Information Retrieval System",
+												"version", "0.1",
+												"copyright", "© 2014 Gary Munnelly",
+												"website", "https://github.com/munnellg/ir_system",
+												"website-label", "Github",
+												"license-type", GTK_LICENSE_GPL_3_0,
+												"comments", "A simple file curation system providing different \nmethods of searching across and ranking text documents",
+												NULL
+		);
+}
+
 static void preferences_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
 	IrAppPrefs *prefs;
 	GtkWindow *win;
@@ -47,6 +63,7 @@ static GActionEntry app_entries[] = {
 	{"quit", quit_activated, NULL, NULL, NULL},
 	{"add_to_index", add_to_index_activated, NULL, NULL, NULL},
 	{"new_index", new_index_activated, NULL, NULL, NULL},
+	{"about", about_activated, NULL, NULL, NULL},
 };
 
 static void ir_app_startup(GApplication *app) {
@@ -84,7 +101,27 @@ static void ir_app_startup(GApplication *app) {
 }
 
 static void ir_app_init(IrApp *app) {
+	GdkPixbuf *pixbuf;
+	GSettings *settings;
+	GError *error = NULL;
+	int stem;
+	char* rank;
+	
 	i_index_initialize();
+
+	pixbuf = gdk_pixbuf_new_from_file("ir_system.png", &error);
+	if(!pixbuf) {
+		fprintf(stderr, "%s\n", error->message);
+		g_error_free(error);
+	} else {
+		gtk_window_set_default_icon(pixbuf);
+	}
+	
+	settings = g_settings_new("org.kdeg.irsystem");
+	stem = g_variant_get_boolean(g_settings_get_value(settings, "stem"));
+	rank = (char*)g_variant_get_string(g_settings_get_value(settings, "rank"), NULL);
+	printf("Stemming Enabled: %s\n", stem? "Yes" : "No");
+	printf("Ranking Function: %s\n", rank);
 }
 
 static void ir_app_activate(GApplication *app) {

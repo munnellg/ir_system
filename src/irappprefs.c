@@ -1,4 +1,3 @@
-#include <gtk/gtk.h>
 #include "irapp.h"
 #include "irappwin.h"
 #include "irappprefs.h"
@@ -45,14 +44,22 @@ static void ir_app_prefs_init(IrAppPrefs *prefs) {
 	child = gtk_label_new("Enable Stemming");
 	gtk_grid_attach(GTK_GRID(container), child, 0, 0, 1, 1);
 	gtk_widget_set_visible(child, TRUE);
-	
+
 	child = gtk_check_button_new();
+
 	gtk_widget_set_visible(child, TRUE);
 	priv->stem = child;
 	gtk_widget_set_visible(child, TRUE);
 	
 	gtk_grid_attach(GTK_GRID(container), child, 1, 0, 1, 1);
 
+	child = gtk_label_new("?");
+	gtk_misc_set_alignment(GTK_MISC(child), 0, 0.5);
+	gtk_widget_set_tooltip_text(child, "Restart program to apply changes to stem");
+	gtk_widget_set_visible(child, TRUE);
+
+	gtk_grid_attach(GTK_GRID(container), child, 2, 0, 1, 1);
+	
 	/* Build combo box for ranking algorithm */
 	child = gtk_label_new("Ranking Function");
 	gtk_grid_attach(GTK_GRID(container), child, 0, 1, 1, 1);
@@ -67,13 +74,14 @@ static void ir_app_prefs_init(IrAppPrefs *prefs) {
 	priv->rank = child;
 	
 	gtk_widget_set_visible(child, TRUE);
-	gtk_grid_attach(GTK_GRID(container), child, 1, 1, 1, 1);
-	
+
+	gtk_grid_attach(GTK_GRID(container), child, 1, 1, 2, 1);
+
 	gtk_window_set_title(GTK_WINDOW(prefs), "Preferences");
 	gtk_window_set_modal(GTK_WINDOW(prefs), TRUE);
 	gtk_window_set_resizable(GTK_WINDOW(prefs), FALSE);
 	gtk_widget_set_visible(container, TRUE);
-	
+
 	child = container;
 	
 	/* The root container for the window. Holds all other widgets */
