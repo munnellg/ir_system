@@ -67,7 +67,8 @@ static void ir_app_prefs_init(IrAppPrefs *prefs) {
 
 	child = gtk_combo_box_text_new();
 
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(child), "boolean", "Boolean");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(child), "boolean_and", "Boolean AND");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(child), "boolean_or", "Boolean OR");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(child), "TF-IDF", "TF-IDF");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(child), "BM25", "BM25");
 		

@@ -1,273 +1,286 @@
 #include "index.h"
+#include "tokenize.h"
+#include "string.h"
 
-static GHashTable *idx;
-static GList *docs;
+struct _document {
+	char *name;
+	int word_count;
+	int char_count;
+};
 
-/* Allocate memory for a new IDocData structure */
-IDocData *i_doc_data_new() {
-	IDocData *d;
+struct _posting {
+	char  *doc_id;
+	int    doc_term_freq;
+	GList *positions;
+};
 
-	if((d = malloc(sizeof(IDocData))) != NULL) {
-		d->doc_id = -1;
-		d->doc_length = 0;				
-	}
+struct _postinglist {
+	int     col_term_freq;
+	char   *token;
+	GTree  *postings;
+};
 
-	return d;
+struct _index {
+	GHashTable *lookup;
+	GTree      *docs;
+};
+
+static void
+add_to_docs_tree(IIndex *idx, TTokenizer *tokenizer, char *fname) {
+	IDocument *doc;
+	char      *fname_dup;
+	
+	doc = i_document_new(fname,
+											 tokenizer->tokens_scanned,
+											 tokenizer->chars_scanned);
+
+	fname_dup = strdup(fname);
+	
+	g_tree_insert(idx->docs, fname_dup, doc);
 }
 
-int i_doc_data_compare(IDocData *d1, IDocData *d2) {	
-	return d1->doc_id - d2->doc_id;
-}
-
-void i_doc_data_free(IDocData *data) {
-	if(data != NULL) {
-		free(data);
-	}
-}
-
-IPosting *i_posting_new() {
+static void
+update_posting(IPostingList *pl, TToken *token, char *fname) {
 	IPosting *p;
-
-	if( (p = malloc(sizeof(IPosting))) != NULL ) {
-			p->doc_data = NULL;
-			p->positions = NULL;
-			p->term_freq = 0;
-	}
+	char     *fname_dup;
 	
-	return p;
-}
+	p = (IPosting *) g_tree_lookup(pl->postings, fname);
 
-IPostingList *i_posting_list_new() {
-	IPostingList *p;
-
-	if( (p = malloc(sizeof(IPostingList))) != NULL ) {
-			p->term = NULL;
-			p->postings = NULL;
-			p->term_freq = 0;
+	if(!p) {
+		p = i_posting_new(fname);
+		fname_dup = strdup(fname);
+		g_tree_insert(pl->postings, fname_dup, p);
 	}
-		
-	return p;
+
+	p->doc_term_freq++;
+	p->positions = g_list_prepend(p->positions,
+																GINT_TO_POINTER(token->word_pos));
 }
 
-int i_posting_compare(IPosting* posting, int *doc_id) {
-	return posting->doc_data->doc_id - *doc_id;
-}
-
-void i_posting_free(IPosting *posting) {
-	g_list_free(posting->positions);
-	free(posting); 
-}
-
-void i_posting_list_free(IPostingList *list) {
-	if( list ) {
-		if( list->term ) {
-			free(list->term);
-		}
-
-		if( list->postings ) {
-			g_list_free_full(list->postings, (GDestroyNotify) i_posting_free); 			
-		}
-
-		free(list); 
-	}
-}
-
-int i_posting_list_compare(IPostingList *l1, IPostingList *l2) {
-	int len1, len2;
-
-	len1 = g_list_length(l1->postings);
-	len2 = g_list_length(l2->postings);
-
-	return len1 - len2;
-}
-
-int i_index_file(char* fname) {
-	FILE *f;
-	GList *tokens, *p, *p2;
-	TToken *token;
+static void
+update_posting_list(IIndex *idx, TToken *token, char *fname) {
 	IPostingList *pl;
-	IPosting *posting;
-	IDocData *doc_data;
-	int quark;
-
-	f = fopen(fname, "r ccs=UTF-8");
+	char         *tmp;
+		
+	pl = (IPostingList*) g_hash_table_lookup(idx->lookup, token->text);
 	
-	if(!f) {
-		return -1;
-	}
-
-	printf("Processing %s\n", fname);
-	
-	quark = g_quark_from_string(fname);
-
-	tokens = t_tokenize_file(f);
-	p = tokens;
-
-	/* Store useful information about the file itself */
-	doc_data = i_doc_data_new();
-	doc_data->doc_id = quark;
-	doc_data->doc_length = g_list_length(tokens);
-	docs = g_list_append(docs, doc_data);
-	
-	while(p) {
-		token = (TToken *)p->data;
-		pl = (IPostingList*) g_hash_table_lookup(idx, token->text);
+	if(!pl) {
+		pl = i_posting_list_new(token->text);
+		tmp = strdup(token->text);
 		
-		if(!pl) {
-			pl = i_posting_list_new();
-			pl->term = strdup(token->text);
-			g_hash_table_insert(idx, strdup(token->text), pl);
-		}
-		
-		pl->term_freq++;
-		p2 = g_list_find_custom(pl->postings, &quark, (GCompareFunc) i_posting_compare);
-		
-		if(!p2) {
-			posting = i_posting_new();
-			posting->doc_data = doc_data;
-			pl->postings = g_list_append(pl->postings, posting);
-		} else {
-			posting = (IPosting *) p2->data;
-		}
-		
-		posting->term_freq++;
-		posting->positions = g_list_append(posting->positions, GINT_TO_POINTER(token->position));		
-		p = p->next;
+		g_hash_table_insert(idx->lookup, tmp, pl);
 	}
 	
-	t_free_list(tokens);
-	fclose(f);
+	update_posting(pl, token, fname);
+	pl->col_term_freq++;
+}
 
+static void
+add_to_lookup_table(IIndex *idx, TTokenizer *tokenizer, char *fname) {
+	GList  *p;
+	TToken *token;
+	
+	for(p = tokenizer->tokens; p!=NULL; p=p->next) {
+		token = (TToken *) p->data;
+		update_posting_list(idx, token, fname);
+	}
+}
+
+IIndex*
+i_index_new() {
+	IIndex *idx;
+
+	idx = malloc(sizeof(*idx));
+
+	if(idx) {
+		idx->docs = g_tree_new_full(
+			(GCompareDataFunc)strcmp,
+			NULL,
+			(GDestroyNotify)free,
+			(GDestroyNotify)i_document_free
+		);
+	
+		idx->lookup = g_hash_table_new_full(
+			g_str_hash,
+			g_str_equal,
+			(GDestroyNotify) free,
+			(GDestroyNotify) i_posting_list_free
+		);		
+	}
+
+	return idx;
+}
+
+IPostingList *
+i_index_get_term_postings(IIndex *idx, char *term) {
+	IPostingList *pl;
+		
+	pl = (IPostingList*) g_hash_table_lookup(idx->lookup, term);
+
+	return pl;
+}
+
+GTree *
+i_index_get_document_tree(IIndex *idx) {
+	return idx->docs;
+}
+
+GHashTable *
+i_index_get_lookup(IIndex *idx) {
+	return idx->lookup;
+}
+
+int
+i_index_add_document (IIndex *idx, char *fname) {
+	TTokenizer *tokenizer;
+
+	tokenizer = t_tokenize_file(fname);
+
+	if(!tokenizer) {
+		return 0;
+	}
+
+	add_to_docs_tree(idx, tokenizer, fname);
+	add_to_lookup_table(idx, tokenizer, fname);
+	
+	t_tokenizer_free(tokenizer);
+	
 	return 1;
 }
 
-static GList *i_index_retrieve_documents(char *query) {
-	GList *tokens, *postings_list, *p;	
-	TToken *t;
-	IPostingList *list;
-		
-	postings_list = NULL;
-	list = NULL;
-	
-	/* Tokenize the user's query */
-	tokens = t_tokenize_str(query);
-	
-	for(p = tokens; p != NULL; p = p->next) {
-		t = (TToken*) p->data;
+void
+i_index_free (IIndex *idx) {
 
-		list = (IPostingList*) g_hash_table_lookup(idx, t->text);
-
-		if(list) {
-			postings_list = g_list_append(postings_list, list);
-		} 
+	if(idx->docs) {
+		g_tree_destroy(idx->docs);
 	}
 
-	postings_list = g_list_sort(postings_list, (GCompareFunc) i_posting_list_compare);
-
-	t_free_list(tokens);
-	
-	return postings_list;
-}
-
-static GList *i_index_intersect(GList *p1, GList *p2) {
-	GList *result;
-	IPosting *l1, *l2;
-	
-	result = NULL;
-	
-	while( p1 != NULL && p2 != NULL ) {
-		l1 = (IPosting *) p1->data;
-		l2 = (IPosting *) p2->data;
-
-		if( i_doc_data_compare(l1->doc_data, l2->doc_data) == 0 ) {
-			result = g_list_append(result, l1);
-			p1 = p1->next;
-			p2 = p2->next;
-		} else if( i_doc_data_compare(l1->doc_data, l2->doc_data) < 0 ) {
-			p1 = p1->next;
-		} else {
-			p2 = p2->next;
-		}
+	if(idx->lookup){
+		g_hash_table_destroy(idx->lookup);
 	}
-
-	return result;
+	
+	free(idx);
 }
 
-static GList *i_index_intersect_many(GList *postings_list) {
-	GList *result, *p;
-	IPostingList *l;
+IDocument*
+i_document_new (char *fname, int wcount, int ccount) {
+	IDocument *doc;
 
-	result = NULL;
-	p = NULL;
+	doc = malloc(sizeof(*doc));
 
-	p = postings_list;	
+	if(doc) {
+		doc->name = strdup(fname);
+		doc->word_count = wcount;
+		doc->char_count = ccount;
+	}
+	
+	return doc;
+}
+
+void
+i_document_free (IDocument *doc) {
+	if(doc->name) {
+		free(doc->name);
+		doc->name = NULL;
+	}
+	free(doc);
+}
+
+IPosting *
+i_posting_new(char *fname) {
+	IPosting *p;
+
+	p = malloc(sizeof(*p));
 
 	if(p) {
-		l = (IPostingList *) p->data;
-		result = l->postings;
-		p = p->next;
-	}	
-
-	while(p != NULL && result != NULL) {
-		l = (IPostingList *) p->data;
-		result = i_index_intersect(result, l->postings);
-		p = p->next;
+		p->doc_id = strdup(fname);
+		p->doc_term_freq = 0;
+		p->positions = NULL;
 	}
-
-	return result;
-}
-
-GSList *i_index_query_boolean_and(char *query) {
-	GList *postings_list, *intersected, *p;
-	GSList *result;
-	char *doc_id;
-	IPosting * posting;
-
-	result = NULL;
-	postings_list = i_index_retrieve_documents(query);
-	intersected = i_index_intersect_many(postings_list);	
 	
-	for(p = intersected; p != NULL; p=p->next) {
-		posting = (IPosting*) p->data;
-		doc_id = (char *)g_quark_to_string(posting->doc_data->doc_id);
-		result = g_slist_append(result, doc_id);
+	return p;
+}
+
+char *
+i_posting_get_id(IPosting *p) {
+	return p->doc_id;
+}
+
+void
+i_posting_free(IPosting *posting) {
+	if(posting->doc_id) {
+		free(posting->doc_id);
 	}
 
-	g_list_free(postings_list);
-	g_list_free(intersected);
-
-	return result;
-}
-
-void i_index_initialize() {
-	docs = NULL;
-	if(idx == NULL) {
-		idx = g_hash_table_new_full( g_str_hash,
-																 g_str_equal,
-																 (GDestroyNotify) free,
-																 (GDestroyNotify) i_posting_list_free
-			);
+	if(posting->positions) {
+		g_list_free(posting->positions);
 	}
-}
-
-void i_index_destroy() {
-	g_hash_table_destroy(idx);
-	idx = NULL;
-	g_list_free_full(docs, (GDestroyNotify)i_doc_data_free);
-}
-
-GSList *i_docs_get_list() {
-	GSList *fnames;
-	GList *p;
-	IDocData *d;
-	char* doc_id;
-
-	fnames = NULL;
 	
-	for(p = docs; p != NULL; p=p->next) {
-		d = (IDocData*) p->data;
-		doc_id = (char *)g_quark_to_string(d->doc_id);
-		fnames = g_slist_append(fnames, doc_id);
-	}
-	return fnames;
+	free(posting);
 }
+
+IPostingList *
+i_posting_list_new (char *text) {
+	IPostingList *pl;
+
+	pl = malloc(sizeof(*pl));
+
+	if(pl) {
+		pl->col_term_freq = 0;
+		pl->token = strdup(text);
+		pl->postings = g_tree_new_full(
+			(GCompareDataFunc)strcmp,
+			NULL,
+			(GDestroyNotify)free,
+			(GDestroyNotify)i_posting_free
+		);
+	}
+	
+	return pl;
+}
+
+char *
+i_posting_list_get_token(IPostingList *pl) {
+	return pl->token;
+}
+
+int
+i_posting_list_get_freq(IPostingList *pl) {
+	return pl->col_term_freq;
+}
+
+GTree *
+i_posting_list_get_postings(IPostingList *p) {
+	return p->postings;
+}
+
+int
+i_posting_list_cmp_docs(IPostingList *p1, IPostingList *p2) {
+	if(!p1 && !p2) {
+		return 0;
+	}
+
+	if(p1 && !p2) {
+		return 1;
+	}
+
+	if(!p1 && p2) {
+		return -1;
+	}
+	
+	return g_tree_nnodes(p1->postings) - g_tree_nnodes(p2->postings);
+}
+
+void
+i_posting_list_free (IPostingList *posting_list) {
+	if(posting_list->token) {
+		free(posting_list->token);
+	}
+
+	if(posting_list->postings) {
+		g_tree_destroy(posting_list->postings);
+	}
+
+	free(posting_list);
+}
+

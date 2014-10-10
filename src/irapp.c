@@ -3,6 +3,7 @@
 #include "irapp.h"
 #include "irappwin.h"
 #include "irappprefs.h"
+#include "irappvidx.h"
 
 G_DEFINE_TYPE(IrApp, ir_app, GTK_TYPE_APPLICATION)
 
@@ -22,6 +23,15 @@ static void about_activated(GSimpleAction *action, GVariant *parameter, gpointer
 		);
 }
 
+static void view_index_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
+	IrAppVIdx *vidx;
+	GtkWindow *win;
+
+	win = gtk_application_get_active_window(GTK_APPLICATION(app));
+	vidx = ir_app_vidx_new(IR_APP_WINDOW(win));
+	gtk_window_present(GTK_WINDOW(vidx));
+}
+
 static void preferences_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
 	IrAppPrefs *prefs;
 	GtkWindow *win;
@@ -36,14 +46,13 @@ static void new_index_activated(GSimpleAction *action, GVariant *parameter, gpoi
 		
 	win = gtk_application_get_active_window (GTK_APPLICATION (app));
 		
-  i_index_destroy();
-	i_index_initialize();
+  i_indexer_reset();
 	ir_app_window_list_files_replace(IR_APP_WINDOW(win), NULL);
 }
 
 static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
 	GtkWindow *win;
-	GSList *files;
+	GList *files;
 	
 	win = gtk_application_get_active_window(GTK_APPLICATION(app));
 
@@ -51,7 +60,7 @@ static void add_to_index_activated(GSimpleAction *action, GVariant *parameter, g
 	ir_app_window_load_files_into_index(IR_APP_WINDOW(win), files);
 	ir_app_window_list_files_append(IR_APP_WINDOW(win), files);
 
-	g_slist_free (files);
+	g_list_free (files);
 }
 
 static void quit_activated(GSimpleAction *action, GVariant *parameter, gpointer app) {
@@ -63,6 +72,7 @@ static GActionEntry app_entries[] = {
 	{"quit", quit_activated, NULL, NULL, NULL},
 	{"add_to_index", add_to_index_activated, NULL, NULL, NULL},
 	{"new_index", new_index_activated, NULL, NULL, NULL},
+	{"view_index", view_index_activated, NULL, NULL, NULL},
 	{"about", about_activated, NULL, NULL, NULL},
 };
 
@@ -78,6 +88,7 @@ static void ir_app_startup(GApplication *app) {
 	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>N", "app.new_index", NULL);
 	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>O", "app.add_to_index", NULL);
 	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>P", "app.preferences", NULL);
+	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>I", "app.view_index", NULL);
 	gtk_application_add_accelerator(GTK_APPLICATION(app), "<Ctrl>Q", "app.quit", NULL);
 
 	menu = g_menu_new();
@@ -86,13 +97,17 @@ static void ir_app_startup(GApplication *app) {
 	section = g_menu_new();
 	g_menu_append(section, "_New Index", "app.new_index");
 	g_menu_append(section, "_Add To Index", "app.add_to_index");
-	g_menu_append(section, "Preferences", "app.preferences");
+	g_menu_append(section, "_View Index", "app.view_index");
 	g_menu_append_section(submenu, NULL, G_MENU_MODEL(section));
 	section = g_menu_new();
 	g_menu_append(section, "_Quit", "app.quit");
 	g_menu_append_section(submenu, NULL, G_MENU_MODEL(section));	
 	g_menu_append_submenu(menu, "File", G_MENU_MODEL(submenu));
 
+	submenu = g_menu_new();
+	g_menu_append(submenu, "Preferences", "app.preferences");
+	g_menu_append_submenu(menu, "Edit", G_MENU_MODEL(submenu));
+	
 	submenu = g_menu_new();
 	g_menu_append(submenu, "About", "app.about");
 	g_menu_append_submenu(menu, "Help", G_MENU_MODEL(submenu));
@@ -107,7 +122,7 @@ static void ir_app_init(IrApp *app) {
 	int stem;
 	char* rank;
 	
-	i_index_initialize();
+	i_indexer_init();
 
 	pixbuf = gdk_pixbuf_new_from_file("ir_system.png", &error);
 	if(!pixbuf) {
@@ -120,7 +135,9 @@ static void ir_app_init(IrApp *app) {
 	settings = g_settings_new("org.kdeg.irsystem");
 	stem = g_variant_get_boolean(g_settings_get_value(settings, "stem"));
 	rank = (char*)g_variant_get_string(g_settings_get_value(settings, "rank"), NULL);
+	
 	printf("Stemming Enabled: %s\n", stem? "Yes" : "No");
+	t_set_stem_enabled(stem);
 	printf("Ranking Function: %s\n", rank);
 }
 

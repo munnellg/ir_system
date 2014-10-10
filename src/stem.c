@@ -1,12 +1,16 @@
 #include "stem.h"
+#include <wchar.h>
+#include <wctype.h>
 
+const static wchar_t vowels[] = L"aeiou";
 
-static int ends_with(char *word, char* substr) {
+static int
+ends_with(wchar_t *word, wchar_t* substr) {
 	int len_word, len_sub, offset;
 	int i;
 
-	len_word = strlen(word);
-	len_sub = strlen(substr);
+	len_word = wcslen(word);
+	len_sub = wcslen(substr);
 	offset = len_word - len_sub;
 	
 	if(offset < 0) {
@@ -14,7 +18,7 @@ static int ends_with(char *word, char* substr) {
 	}
 
 	for(i=0; i<len_sub; i++) {
-		if( tolower(word[i+offset]) != tolower(substr[i])) {
+		if( towlower(word[i+offset]) != towlower(substr[i])) {
 			return 0;	
 		}
 	}
@@ -25,8 +29,8 @@ static int ends_with(char *word, char* substr) {
 /* Checks if the character at index idx is a consonant. Here, the
  * definition of a consonant is a letter other than A, E, I, O, U and
  * other than Y preceded by a consonant */
-static int is_consonant(char *word, int idx) {
-	const static char vowels[] = "aeiou";
+static int
+is_consonant(wchar_t *word, int idx) {
 	int i;
 
 	if(idx < 0) {
@@ -40,14 +44,14 @@ static int is_consonant(char *word, int idx) {
 	}
 
 	/* First check the non-conditional vowels */
-	for( i=0; i<strlen(vowels); i++ ) {
-		if( tolower(word[idx]) == vowels[i] ) {
+	for( i=0; i<wcslen(vowels); i++ ) {
+		if( towlower(word[idx]) == vowels[i] ) {
 			return 0;
 		}
 	}
 
 	/* Check Y, our special case character */
-	if( tolower(word[idx]) == 'y' && is_consonant(word, --idx) ) {
+	if( towlower(word[idx]) == 'y' && is_consonant(word, --idx) ) {
 		return 0;
 	}
 	
@@ -58,7 +62,8 @@ static int is_consonant(char *word, int idx) {
  * vowel to be v, a consonant to be c, a list of consecutive vowels to
  * be V and a list of consecutive consonants to be C, then the measure
  * m of a string is computed as [C](VC)^(m)[V] */
-static int compute_measure(char* word, int len) {
+static int
+compute_measure(wchar_t* word, int len) {
 	int measure, state, is_vowel;
 	int i;
 
@@ -87,7 +92,8 @@ static int compute_measure(char* word, int len) {
 	return measure;
 }
 
-static int contains_vowel(char *word, int len) {	
+static int
+contains_vowel(wchar_t *word, int len) {	
 	int i;
 
 	for(i=0; i<len; i++) {
@@ -99,7 +105,8 @@ static int contains_vowel(char *word, int len) {
 	return 0;
 }
 
-static int ends_double_consonant(char *word, int len) {
+static int
+ends_double_consonant(wchar_t *word, int len) {
 
 	/* Word must contain at least two characters in order to pass this
 	 * test */
@@ -108,14 +115,15 @@ static int ends_double_consonant(char *word, int len) {
 	}
 
 	/* Run the test */
-	return (tolower(word[len-1]) == tolower(word[len-2]) &&
+	return (towlower(word[len-1]) == towlower(word[len-2]) &&
 					is_consonant(word, len-1) &&
 					is_consonant(word, len-2));
 }
 
-static int ends_consonant_vowel_consonant(char *word, int len) {
+static int
+ends_consonant_vowel_consonant(wchar_t *word, int len) {
 	int i;
-	static const char exclude[] = "wxy";
+	static const wchar_t exclude[] = L"wxy";
 
 	/* Word must contain at least three characters in order to pass this
 	 * test */
@@ -125,7 +133,7 @@ static int ends_consonant_vowel_consonant(char *word, int len) {
 
 	/* Check if the last character in the string is on our exclusion
 	 * list. If so, then it will fail this test */
-	for(i=0; i<strlen(exclude); i++) {
+	for(i=0; i<wcslen(exclude); i++) {
 		if(word[len-1] == exclude[i]) {
 			return 0;
 		}
@@ -137,51 +145,53 @@ static int ends_consonant_vowel_consonant(char *word, int len) {
 					is_consonant(word, len-1));
 }
 
-static void step1a(char *word) {
+static void
+step1a(wchar_t *word) {
 	int len;
 	
-	len = strlen(word);
+	len = wcslen(word);
 
-	if(ends_with(word, "SSES")) {
+	if(ends_with(word, L"SSES")) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "IES")) {
+	} else if(ends_with(word, L"IES")) {
 		word[len-2] = '\0';
-	} else if(!ends_with(word, "SS") && ends_with(word, "S")) {
+	} else if(!ends_with(word, L"SS") && ends_with(word, L"S")) {
 		word[len-1] = '\0';
 	}
 }
 
-static void step1b(char *word) {
+static void
+step1b(wchar_t *word) {
 	int len;
 
-	len = strlen(word);
+	len = wcslen(word);
 
-	if(ends_with(word, "EED") && compute_measure(word, len-4) > 0) {
+	if(ends_with(word, L"EED") && compute_measure(word, len-4) > 0) {
 		word[len-1] = '\0';
 		return;
-	} else if(ends_with(word, "ED") && contains_vowel(word, len-3) ) {
+	} else if(ends_with(word, L"ED") && contains_vowel(word, len-3) ) {
 		len = len-2;
 		word[len] = '\0';
-	} else if(ends_with(word, "ING") && contains_vowel(word, len-4)) {
+	} else if(ends_with(word, L"ING") && contains_vowel(word, len-4)) {
 		len = len-3;
 		word[len] = '\0';
 	} else {
 		return;
 	}
 
-	if(ends_with(word, "AT")) {
+	if(ends_with(word, L"AT")) {
 		word[len] = 'e';
 		word[len+1] = '\0';
-	} else if(ends_with(word, "BL")) {
+	} else if(ends_with(word, L"BL")) {
 		word[len] = 'e';
 		word[len+1] = '\0';
-	} else if(ends_with(word, "IZ")) {
+	} else if(ends_with(word, L"IZ")) {
 		word[len] = 'e';
 		word[len+1] = '\0';
 	} else if(ends_double_consonant(word, len) &&
-						tolower(word[len-1]) != 'l' &&
-						tolower(word[len-1]) != 's' &&
-						tolower(word[len-1]) != 'z') {
+						towlower(word[len-1]) != 'l' &&
+						towlower(word[len-1]) != 's' &&
+						towlower(word[len-1]) != 'z') {
 		word[len-1] = '\0';
 	} else if(compute_measure(word, len) == 1 && ends_consonant_vowel_consonant(word, len)) {
 		word[len] = 'e';
@@ -189,148 +199,154 @@ static void step1b(char *word) {
 	}
 }
 
-static void step1c(char *word) {
+static void
+step1c(wchar_t *word) {
 	int len;
-	len = strlen(word);
+	len = wcslen(word);
 	
-	if(ends_with(word, "Y") && contains_vowel(word, len-2) > 0) {
+	if(ends_with(word, L"Y") && contains_vowel(word, len-2) > 0) {
 		word[len-1] = 'i';
 	}
 }
 
-static void step2(char *word) {
+static void
+step2(wchar_t *word) {
 	int len;
-	len = strlen(word);
+	len = wcslen(word);
 	
-	if(ends_with(word, "ATIONAL") && compute_measure(word, len-7) > 0) {
-		strcpy(word+len-7, "ate\0");
-	} else	if(ends_with(word, "TIONAL") && compute_measure(word, len-6) > 0) {
+	if(ends_with(word, L"ATIONAL") && compute_measure(word, len-7) > 0) {
+		wcscpy(word+len-7, L"ate\0");
+	} else	if(ends_with(word, L"TIONAL") && compute_measure(word, len-6) > 0) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "ENCI") && compute_measure(word, len-4) > 0) {
-		strcpy(word+len-1, "e\0");
-	} else if(ends_with(word, "ANCI") && compute_measure(word, len-4) > 0) {
-		strcpy(word+len-1, "e\0");
-	} else if(ends_with(word, "IZER") && compute_measure(word, len-4) > 0) {
+	} else if(ends_with(word, L"ENCI") && compute_measure(word, len-4) > 0) {
+		wcscpy(word+len-1, L"e\0");
+	} else if(ends_with(word, L"ANCI") && compute_measure(word, len-4) > 0) {
+		wcscpy(word+len-1, L"e\0");
+	} else if(ends_with(word, L"IZER") && compute_measure(word, len-4) > 0) {
 		word[len-1] = '\0';
-	} else if(ends_with(word, "ABLI") && compute_measure(word, len-4) > 0) {
-		strcpy(word+len-1, "e\0");
-	} else if(ends_with(word, "ALLI") && compute_measure(word, len-4) > 0) {
+	} else if(ends_with(word, L"ABLI") && compute_measure(word, len-4) > 0) {
+		wcscpy(word+len-1, L"e\0");
+	} else if(ends_with(word, L"ALLI") && compute_measure(word, len-4) > 0) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "ENTLI") && compute_measure(word, len-5) > 0) {
+	} else if(ends_with(word, L"ENTLI") && compute_measure(word, len-5) > 0) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "ELI") && compute_measure(word, len-3) > 0) {
+	} else if(ends_with(word, L"ELI") && compute_measure(word, len-3) > 0) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "OUSLI") && compute_measure(word, len-5) > 0) {
+	} else if(ends_with(word, L"OUSLI") && compute_measure(word, len-5) > 0) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "IZATION") && compute_measure(word, len-7) > 0) {
-		strcpy(word+len-7, "ize\0");
-	} else if(ends_with(word, "ATION") && compute_measure(word, len-5) > 0) {
-		strcpy(word+len-5, "ate\0");
-	} else if(ends_with(word, "ATOR") && compute_measure(word, len-4) > 0) {
-		strcpy(word+len-4, "ate\0");
-	} else if(ends_with(word, "ALISM") && compute_measure(word, len-5) > 0) {
+	} else if(ends_with(word, L"IZATION") && compute_measure(word, len-7) > 0) {
+		wcscpy(word+len-7, L"ize\0");
+	} else if(ends_with(word, L"ATION") && compute_measure(word, len-5) > 0) {
+		wcscpy(word+len-5, L"ate\0");
+	} else if(ends_with(word, L"ATOR") && compute_measure(word, len-4) > 0) {
+		wcscpy(word+len-4, L"ate\0");
+	} else if(ends_with(word, L"ALISM") && compute_measure(word, len-5) > 0) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "IVENESS") && compute_measure(word, len-7) > 0) {
+	} else if(ends_with(word, L"IVENESS") && compute_measure(word, len-7) > 0) {
 		word[len-4] = '\0';
-	} else if(ends_with(word, "FULNESS") && compute_measure(word, len-7) > 0) {
+	} else if(ends_with(word, L"FULNESS") && compute_measure(word, len-7) > 0) {
 		word[len-4] = '\0';
-	} else if(ends_with(word, "OUSNESS") && compute_measure(word, len-7) > 0) {
+	} else if(ends_with(word, L"OUSNESS") && compute_measure(word, len-7) > 0) {
 		word[len-4] = '\0';
-	} else if(ends_with(word, "ALITI") && compute_measure(word, len-5) > 0) {
+	} else if(ends_with(word, L"ALITI") && compute_measure(word, len-5) > 0) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "IVITI") && compute_measure(word, len-5) > 0) {
-		strcpy(word+len-3, "e\0");
-	} else if(ends_with(word, "BILITI") && compute_measure(word, len-6) > 0) {
-		strcpy(word+len-6, "ble\0");
+	} else if(ends_with(word, L"IVITI") && compute_measure(word, len-5) > 0) {
+		wcscpy(word+len-3, L"e\0");
+	} else if(ends_with(word, L"BILITI") && compute_measure(word, len-6) > 0) {
+		wcscpy(word+len-6, L"ble\0");
 	}
 }
 
-static void step3(char *word) {
+static void
+step3(wchar_t *word) {
 	int len;
-	len = strlen(word);
+	len = wcslen(word);
 	
-	if(ends_with(word, "ICATE") && compute_measure(word, len-5) > 0) {
+	if(ends_with(word, L"ICATE") && compute_measure(word, len-5) > 0) {
 		word[len-3] = '\0';
-	} else	if(ends_with(word, "ATIVE") && compute_measure(word, len-5) > 0) {
+	} else	if(ends_with(word, L"ATIVE") && compute_measure(word, len-5) > 0) {
 		word[len-5] = '\0';
-	} else if(ends_with(word, "ALIZE") && compute_measure(word, len-5) > 0) {
+	} else if(ends_with(word, L"ALIZE") && compute_measure(word, len-5) > 0) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "ICITI") && compute_measure(word, len-5) > 0) {
+	} else if(ends_with(word, L"ICITI") && compute_measure(word, len-5) > 0) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "ICAL") && compute_measure(word, len-4) > 0) {
+	} else if(ends_with(word, L"ICAL") && compute_measure(word, len-4) > 0) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "FUL") && compute_measure(word, len-3) > 0) {
+	} else if(ends_with(word, L"FUL") && compute_measure(word, len-3) > 0) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "NESS") && compute_measure(word, len-4) > 0) {
+	} else if(ends_with(word, L"NESS") && compute_measure(word, len-4) > 0) {
 		word[len-4] = '\0';
 	}
 }
 
-static void step4(char *word) {
+static void
+step4(wchar_t *word) {
 	int len;
-	len = strlen(word);
+	len = wcslen(word);
 	
-	if(ends_with(word, "AL") && compute_measure(word, len-2) > 1) {
+	if(ends_with(word, L"AL") && compute_measure(word, len-2) > 1) {
 		word[len-2] = '\0';
-	} else	if(ends_with(word, "ANCE") && compute_measure(word, len-4) > 1) {
+	} else	if(ends_with(word, L"ANCE") && compute_measure(word, len-4) > 1) {
 		word[len-4] = '\0';
-	} else if(ends_with(word, "ENCE") && compute_measure(word, len-4) > 1) {
+	} else if(ends_with(word, L"ENCE") && compute_measure(word, len-4) > 1) {
 		word[len-4] = '\0';
-	} else if(ends_with(word, "ER") && compute_measure(word, len-2) > 1) {
+	} else if(ends_with(word, L"ER") && compute_measure(word, len-2) > 1) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "IC") && compute_measure(word, len-2) > 1) {
+	} else if(ends_with(word, L"IC") && compute_measure(word, len-2) > 1) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "ABLE") && compute_measure(word, len-4) > 1) {
+	} else if(ends_with(word, L"ABLE") && compute_measure(word, len-4) > 1) {
 		word[len-4] = '\0';
-	} else if(ends_with(word, "IBLE") && compute_measure(word, len-4) > 1) {
+	} else if(ends_with(word, L"IBLE") && compute_measure(word, len-4) > 1) {
 		word[len-4] = '\0';
-	} else if(ends_with(word, "ANT") && compute_measure(word, len-3) > 1) {
+	} else if(ends_with(word, L"ANT") && compute_measure(word, len-3) > 1) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "EMENT") && compute_measure(word, len-5) > 1) {
+	} else if(ends_with(word, L"EMENT") && compute_measure(word, len-5) > 1) {
 		word[len-5] = '\0';
-	} else if(ends_with(word, "MENT") && compute_measure(word, len-4) > 1) {
+	} else if(ends_with(word, L"MENT") && compute_measure(word, len-4) > 1) {
 		word[len-4] = '\0';
-	} else if(ends_with(word, "ENT") && compute_measure(word, len-3) > 1) {
+	} else if(ends_with(word, L"ENT") && compute_measure(word, len-3) > 1) {
 		word[len-3] = '\0';
-	} else if( (ends_with(word, "SION") || ends_with(word, "TION")) && compute_measure(word, len-4) > 1) {
+	} else if( (ends_with(word, L"SION") || ends_with(word, L"TION")) && compute_measure(word, len-4) > 1) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "OU") && compute_measure(word, len-2) > 1) {
+	} else if(ends_with(word, L"OU") && compute_measure(word, len-2) > 1) {
 		word[len-2] = '\0';
-	} else if(ends_with(word, "ISM") && compute_measure(word, len-3) > 1) {
+	} else if(ends_with(word, L"ISM") && compute_measure(word, len-3) > 1) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "ATE") && compute_measure(word, len-3) > 1) {
+	} else if(ends_with(word, L"ATE") && compute_measure(word, len-3) > 1) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "ITI") && compute_measure(word, len-3) > 1) {
+	} else if(ends_with(word, L"ITI") && compute_measure(word, len-3) > 1) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "OUS") && compute_measure(word, len-3) > 1) {
+	} else if(ends_with(word, L"OUS") && compute_measure(word, len-3) > 1) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "IVE") && compute_measure(word, len-3) > 1) {
+	} else if(ends_with(word, L"IVE") && compute_measure(word, len-3) > 1) {
 		word[len-3] = '\0';
-	} else if(ends_with(word, "IZE") && compute_measure(word, len-3) > 1) {
+	} else if(ends_with(word, L"IZE") && compute_measure(word, len-3) > 1) {
 		word[len-3] = '\0';
 	}
 }
 
-static void step5(char *word) {
+static void
+step5(wchar_t *word) {
 	int len;
-	len = strlen(word);
+	len = wcslen(word);
 	
-	if(ends_with(word, "E") && compute_measure(word, len-1) > 1) {
+	if(ends_with(word, L"E") && compute_measure(word, len-1) > 1) {
 		word[len-1] = '\0';
-	} else if(ends_with(word, "E") && compute_measure(word, len-1) == 1 && !ends_consonant_vowel_consonant(word, len-1)) {
+	} else if(ends_with(word, L"E") && compute_measure(word, len-1) == 1 && !ends_consonant_vowel_consonant(word, len-1)) {
 		word[len-1] = '\0';
 	}
 
-	if(ends_with(word, "L") && compute_measure(word, len) > 1 && ends_double_consonant(word, len)) {
+	if(ends_with(word, L"L") && compute_measure(word, len) > 1 && ends_double_consonant(word, len)) {
 		word[len-1] = '\0';
 	}
 }
 
-char* s_stem(char *word) {
-	char* copy;
+wchar_t*
+s_stem(wchar_t *word) {
+	wchar_t* copy;
 
-	copy = malloc(sizeof(char) * strlen(word));
-	strcpy(copy, word);	
+	copy = malloc(sizeof(*copy) * (wcslen(word)+1));
+	wcscpy(copy, word);	
 	
 	step1a(copy);
 	step1b(copy);
@@ -339,5 +355,6 @@ char* s_stem(char *word) {
 	step3(copy);
 	step4(copy);
 	step5(copy);
+	
 	return copy;
 }

@@ -7,11 +7,12 @@
 		</key>
 		<key name="rank" type="s">
 			<choices>
-				<choice value='boolean'/>
+				<choice value='boolean_and'/>
+				<choice value='boolean_or' />
 				<choice value='TF-IDF' />
 				<choice value='BM25' />
 			</choices>
-			<default>'boolean'</default>
+			<default>'boolean_and'</default>
 			<summary>Ranking</summary>
 			<description>The type of ranking the application will use when returning documents</description>
 		</key>

@@ -6,6 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-char* s_stem(char *word);
+wchar_t* s_stem(wchar_t *word);
 
 #endif /* _STEM_H_ */

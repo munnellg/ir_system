@@ -2,7 +2,7 @@
 #define _IRAPP_H_
 
 #include <gtk/gtk.h>
-#include "index.h"
+#include "indexer.h"
 
 #define IR_APP_TYPE (ir_app_get_type())
 #define IR_APP(obj) (G_TYPE_CHECK_INSTANCE_CAST((obj), IR_APP_TYPE, IrApp))

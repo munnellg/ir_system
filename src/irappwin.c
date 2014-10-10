@@ -13,31 +13,47 @@ typedef struct _IrAppWindowPrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE(IrAppWindow, ir_app_window, GTK_TYPE_APPLICATION_WINDOW)
 
-static void clear_search(GtkEntry *entry, gpointer user_data) {
-	IrAppWindow *win;
-	GSList *fnames;
+static GList *
+slist_to_list(GSList *sl) {
+	GList *l;
 
-	fnames = NULL;
+	l = NULL;
+	for(; sl!=NULL; sl=sl->next) {
+		l = g_list_prepend(l, sl->data);		
+	}
+
+	l = g_list_reverse(l);
+	
+	return l;
+}
+
+static void
+clear_search(GtkEntry *entry, gpointer user_data) {
+	IrAppWindow *win;
+	GList *fnames;
+
 	win = IR_APP_WINDOW (gtk_widget_get_toplevel (GTK_WIDGET (entry)));
-	fnames = i_docs_get_list();	
+	fnames = i_indexer_get_documents();	
 	ir_app_window_list_files_replace(win, fnames);
 	gtk_entry_set_text(entry, "");
 }
 
-static void execute_search(GtkEntry *entry, gpointer user_data) {
+static void
+execute_search(GtkEntry *entry, gpointer user_data) {
 	char *query;
-	GSList *docs;
+	GList *docs;
 	IrAppWindow *win;
 
 
 	win = IR_APP_WINDOW (gtk_widget_get_toplevel (GTK_WIDGET (entry)));
 	query = (char*)gtk_entry_get_text(entry);
-	docs = i_index_query_boolean_and(query);
+	docs = i_indexer_query(query);
 	
 	ir_app_window_list_files_replace(win, docs);
 }
 
-static void search_icon_release_activated(GtkEntry *entry, GtkEntryIconPosition pos, GdkEvent *event, gpointer user_data) {
+static void
+search_icon_release_activated(GtkEntry *entry, GtkEntryIconPosition pos, GdkEvent *event, gpointer user_data) {
 
 	if (pos == GTK_ENTRY_ICON_PRIMARY) {
 		clear_search(entry, user_data);
@@ -46,14 +62,16 @@ static void search_icon_release_activated(GtkEntry *entry, GtkEntryIconPosition 
 	}
 }
 
-static gboolean search_keypress_activated(GtkEntry *entry, GdkEventKey *event, gpointer user_data) {
+static gboolean
+search_keypress_activated(GtkEntry *entry, GdkEventKey *event, gpointer user_data) {
 	if(event->keyval == 65293) {
 		execute_search(entry, user_data);		
 	}
 	return FALSE;
 }
 
-static void open_selected_file(GtkListBox *list_box, GtkListBoxRow *row, gpointer user_data) {
+static void
+open_selected_file(GtkListBox *list_box, GtkListBoxRow *row, gpointer user_data) {
 	GtkWidget *label;
 	IrAppWindow *win;	
 	GFile *f;
@@ -65,7 +83,8 @@ static void open_selected_file(GtkListBox *list_box, GtkListBoxRow *row, gpointe
 	g_object_unref(f);
 }
 
-static void ir_app_window_init(IrAppWindow *win) {
+static void
+ir_app_window_init(IrAppWindow *win) {
 	GtkWidget *root, *container, *child, *object;
 	IrAppWindowPrivate *priv;
 	
@@ -146,19 +165,23 @@ static void ir_app_window_init(IrAppWindow *win) {
 	gtk_widget_set_visible(root, TRUE);
 }
 
-static void ir_app_window_class_init(IrAppWindowClass *class) {
+static void
+ir_app_window_class_init(IrAppWindowClass *class) {
 
 }
 
-IrAppWindow *ir_app_window_new(IrApp *app) {
+IrAppWindow *
+ir_app_window_new(IrApp *app) {
 	return g_object_new(IR_APP_WINDOW_TYPE, "application", app, NULL);
 }
 
-GSList* ir_app_window_get_files(IrAppWindow *win) {
+GList*
+ir_app_window_get_files(IrAppWindow *win) {
 	GtkWidget *dialog;
-	GSList *l;
+	GList  *l;
+	GSList *sl;
 	
-	l = NULL;	
+	sl = NULL;	
 	
 	dialog = gtk_file_chooser_dialog_new ((const gchar*)"Open File",
 																				GTK_WINDOW(win),
@@ -173,8 +196,11 @@ GSList* ir_app_window_get_files(IrAppWindow *win) {
 
 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
 	{
-		l = gtk_file_chooser_get_filenames (GTK_FILE_CHOOSER (dialog));
+		sl = gtk_file_chooser_get_filenames (GTK_FILE_CHOOSER (dialog));
 	}
+
+	l = slist_to_list(sl);
+	g_slist_free(sl);
 	
 	gtk_widget_hide(dialog);
 	gtk_widget_destroy (dialog);
@@ -182,26 +208,28 @@ GSList* ir_app_window_get_files(IrAppWindow *win) {
 	return l;
 }
 
-void ir_app_window_load_files_into_index(IrAppWindow *win, GSList *list) {
+void
+ir_app_window_load_files_into_index(IrAppWindow *win, GList *list) {
 	IrAppWindowPrivate *priv;
-	GSList *p;
+	GList *p;
 	int len;
 	int i;
 	
-	len= g_slist_length(list);
+	len= g_list_length(list);
 	p = list;
 	priv = ir_app_window_get_instance_private(win);
 	gtk_widget_set_visible(GTK_WIDGET(priv->lbar), TRUE);
 	for(p=list; p!=NULL; p=p->next) {
 		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(priv->lbar), (float)++i/(float)len);
-		i_index_file(p->data);
+		i_indexer_index_document(p->data);
 	}
 	gtk_widget_set_visible(GTK_WIDGET(priv->lbar), FALSE);
 }
 
-void ir_app_window_list_files_append(IrAppWindow *win, GSList *files) {
+void
+ir_app_window_list_files_append(IrAppWindow *win, GList *files) {
 	GtkWidget *list_item;
-	GSList *p;
+	GList *p;
 	IrAppWindowPrivate *priv;
 	gchar *fname;
 
@@ -222,7 +250,8 @@ void ir_app_window_list_files_append(IrAppWindow *win, GSList *files) {
 	}
 }
 
-void ir_app_window_list_files_replace(IrAppWindow *win, GSList *files) {
+void
+ir_app_window_list_files_replace(IrAppWindow *win, GList *files) {
 	GList *children, *p;
 	IrAppWindowPrivate *priv;
 
@@ -238,7 +267,8 @@ void ir_app_window_list_files_replace(IrAppWindow *win, GSList *files) {
 	ir_app_window_list_files_append(win, files);
 }
 
-void ir_app_window_open(IrAppWindow *win, GFile *file) {
+void
+ir_app_window_open(IrAppWindow *win, GFile *file) {
 	gchar *basename;
 	GtkTextBuffer *buffer;
 	IrAppWindowPrivate *priv;
